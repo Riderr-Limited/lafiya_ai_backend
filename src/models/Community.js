@@ -33,6 +33,7 @@ const postSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
   }],
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  anonymous: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const CommunityGroup = mongoose.model('CommunityGroup', communityGroupSchema);

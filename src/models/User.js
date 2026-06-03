@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema({
     hospital: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
     trustScore: { type: Number, default: 0 },
   },
+  rating: { type: Number, default: 0 },
+  reviewCount: { type: Number, default: 0 },
+  availableForConsultation: { type: Boolean, default: true },
+  fcmToken: String,
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 

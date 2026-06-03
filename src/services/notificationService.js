@@ -8,6 +8,7 @@ const createNotification = async (userId, type, title, body, data = {}) => {
 
 const sendPush = async (userId, title, body, data = {}) => {
   try {
+    if (!admin.apps.length) return;
     const user = await User.findById(userId).select('fcmToken');
     if (!user?.fcmToken) return;
     await admin.messaging().send({
@@ -30,7 +31,7 @@ exports.notify = async (userId, type, title, body, data = {}) => {
 exports.createNotification = createNotification;
 
 exports.sendMulticast = async (tokens, title, body, data = {}) => {
-  if (!tokens.length) return;
+  if (!tokens.length || !admin.apps.length) return;
   const chunks = [];
   for (let i = 0; i < tokens.length; i += 500) chunks.push(tokens.slice(i, i + 500));
   for (const chunk of chunks) {

@@ -43,15 +43,20 @@ router.get('/groups/:id/posts', protect, async (req, res) => {
     .populate('verifiedBy', 'name')
     .sort('-createdAt')
     .limit(30);
-  res.json({ posts });
+
+  const sanitised = posts.map(post => {
+    const p = post.toObject();
+    if (p.anonymous && req.user.role === 'patient') p.author = { name: 'Anonymous' };
+    return p;
+  });
+  res.json({ posts: sanitised });
 });
 
 // POST /api/community/groups/:id/posts
 router.post('/groups/:id/posts', protect, async (req, res) => {
   try {
-    const { content, language, type } = req.body;
+    const { content, language, type, anonymous = false } = req.body;
 
-    // AI misinformation check
     const misinfoCheck = await detectMisinformation(content);
 
     const post = await Post.create({
@@ -60,6 +65,7 @@ router.post('/groups/:id/posts', protect, async (req, res) => {
       content,
       language: language || req.user.language,
       type,
+      anonymous,
       isMisinformation: misinfoCheck.isMisinformation && misinfoCheck.confidence > 70,
       misinformationNote: misinfoCheck.isMisinformation ? misinfoCheck.reason : undefined,
     });
