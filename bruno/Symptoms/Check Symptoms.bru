@@ -1,0 +1,31 @@
+meta {
+  name: Check Symptoms
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/symptoms/check
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "symptoms": ["fever", "headache", "fatigue"],
+    "language": "english",
+    "patientAge": 30,
+    "patientGender": "male",
+    "isPregnant": false
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("symptomId", res.body.check._id);
+  }
+}

@@ -1,0 +1,14 @@
+meta {
+  name: Get Group Posts
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/community/groups/{{groupId}}/posts
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

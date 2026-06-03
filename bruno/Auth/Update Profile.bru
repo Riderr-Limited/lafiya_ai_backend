@@ -1,0 +1,22 @@
+meta {
+  name: Update Profile
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/auth/me
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "Aminu Musa Updated",
+    "language": "english"
+  }
+}

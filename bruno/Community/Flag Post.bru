@@ -1,0 +1,15 @@
+meta {
+  name: Flag Post
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/api/community/posts/{{postId}}/flag
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,14 @@
+meta {
+  name: Find Nearby Hospitals
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/hospitals?lat=12.0022&lng=8.5167&radius=10000&type=teaching&emergency=true
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

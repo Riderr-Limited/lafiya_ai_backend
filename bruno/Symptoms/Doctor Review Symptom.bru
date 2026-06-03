@@ -1,0 +1,21 @@
+meta {
+  name: Doctor Review Symptom
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/symptoms/{{symptomId}}/review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{doctorToken}}
+}
+
+body:json {
+  {
+    "notes": "Patient should visit clinic for malaria test. Symptoms are consistent with early-stage malaria."
+  }
+}

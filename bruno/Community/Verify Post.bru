@@ -1,0 +1,15 @@
+meta {
+  name: Verify Post
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/api/community/posts/{{postId}}/verify
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{doctorToken}}
+}

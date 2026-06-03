@@ -1,0 +1,29 @@
+meta {
+  name: Create Post
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/community/groups/{{groupId}}/posts
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "content": "Drinking clean water and washing hands regularly helps prevent cholera. Always boil water before drinking.",
+    "language": "english",
+    "type": "question"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("postId", res.body.post._id);
+  }
+}

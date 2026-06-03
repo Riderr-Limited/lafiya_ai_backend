@@ -1,0 +1,14 @@
+meta {
+  name: List Content
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/content?category=malaria&page=1
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

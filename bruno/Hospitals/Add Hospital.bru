@@ -1,0 +1,39 @@
+meta {
+  name: Add Hospital
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/hospitals
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "name": "Aminu Kano Teaching Hospital",
+    "type": "teaching",
+    "address": "Zaria Road, Kano",
+    "state": "Kano",
+    "lga": "Nassarawa",
+    "phone": "064123456",
+    "hasEmergency": true,
+    "isVerified": true,
+    "location": {
+      "type": "Point",
+      "coordinates": [8.5167, 12.0022]
+    },
+    "services": ["emergency", "maternity", "surgery", "pediatrics"]
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("hospitalId", res.body.hospital._id);
+  }
+}

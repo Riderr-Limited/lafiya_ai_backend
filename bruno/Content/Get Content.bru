@@ -1,0 +1,14 @@
+meta {
+  name: Get Content
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/content/{{contentId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

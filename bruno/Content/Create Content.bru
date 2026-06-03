@@ -1,0 +1,31 @@
+meta {
+  name: Create Content
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/content
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{doctorToken}}
+}
+
+body:json {
+  {
+    "title": "Preventing Malaria in Northern Nigeria",
+    "body": "Malaria is preventable. Use insecticide-treated nets, eliminate standing water, and seek treatment early if you have fever.",
+    "category": "malaria",
+    "language": "english",
+    "tags": ["malaria", "prevention", "northern nigeria"]
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("contentId", res.body.content._id);
+  }
+}

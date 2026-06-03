@@ -1,0 +1,14 @@
+meta {
+  name: List Doctors
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/doctors?specialization=general&state=Kano
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

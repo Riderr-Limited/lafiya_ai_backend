@@ -1,0 +1,21 @@
+meta {
+  name: Reply to Post
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/community/posts/{{postId}}/reply
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{doctorToken}}
+}
+
+body:json {
+  {
+    "content": "This is correct advice. Boiling water kills harmful bacteria and viruses that cause cholera."
+  }
+}
