@@ -1,62 +1,100 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const apicache = require('apicache');
-const connectDB = require('./config/db');
+const express = require("express");
+const http = require("http");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const { Server } = require("socket.io");
+const path = require("path");
+
+const connectDB = require("./config/database");
+const socketHandler = require("./config/socket");
+const errorHandler = require("./middlewares/errorHandler");
+const notFound = require("./middlewares/notFound");
+
+// Route imports
+const authRoutes = require("./routes/auth.routes");
+const userRoutes = require("./routes/user.routes");
+const communityRoutes = require("./routes/community.routes");
+const postRoutes = require("./routes/post.routes");
+const commentRoutes = require("./routes/comment.routes");
+const doctorRoutes = require("./routes/doctor.routes");
+const hospitalRoutes = require("./routes/hospital.routes");
+const appointmentRoutes = require("./routes/appointment.routes");
+const healthRecordRoutes = require("./routes/healthRecord.routes");
+const aiRoutes = require("./routes/ai.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const medicationRoutes = require("./routes/medication.routes");
+const pregnancyRoutes = require("./routes/pregnancy.routes");
+const campaignRoutes = require("./routes/campaign.routes");
+const emergencyRoutes = require("./routes/emergency.routes");
+const adminRoutes = require("./routes/admin.routes");
+
+require("dotenv").config();
 
 const app = express();
-const cache = apicache.middleware;
+const server = http.createServer(app);
 
-// Connect DB
+// Connect to DB
 connectDB();
 
-// Middleware
+// Socket.io
+const io = new Server(server, {
+  cors: { origin: process.env.CLIENT_URL || "*", methods: ["GET", "POST"] },
+});
+socketHandler(io);
+app.set("io", io);
+
+// Security Middlewares
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: process.env.CLIENT_URL || "*", credentials: true }));
 
-// Cron jobs
-require('./jobs/medicationReminder');
-require('./jobs/pregnancyReminder');
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, message: "Too many requests, please try again later." },
+});
+app.use("/api/", limiter);
 
-// Cached routes
-app.use('/api/hospitals', cache('10 minutes'), require('./routes/hospitalRoutes'));
-app.use('/api/content', cache('5 minutes'), require('./routes/contentRoutes'));
-app.use('/api/community/groups', cache('2 minutes'), require('./routes/communityRoutes'));
+// Body Parsers
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Core routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/symptoms', require('./routes/symptomRoutes'));
-app.use('/api/community', require('./routes/communityRoutes'));
-app.use('/api/doctors', require('./routes/doctorRoutes'));
+// Logging
+if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
 
-// New feature routes
-app.use('/api/voice', require('./routes/voiceRoutes'));
-app.use('/api/sessions', require('./routes/sessionRoutes'));
-app.use('/api/health-log', require('./routes/healthLogRoutes'));
-app.use('/api/health-records', require('./routes/healthRecordRoutes'));
-app.use('/api/consultations', require('./routes/consultationRoutes'));
-app.use('/api/medications', require('./routes/medicationRoutes'));
-app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/pregnancy', require('./routes/pregnancyRoutes'));
-app.use('/api/emergency', require('./routes/emergencyRoutes'));
-app.use('/api/campaigns', require('./routes/campaignRoutes'));
-app.use('/api/offline', require('./routes/offlineRoutes'));
+// Static uploads
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Health check
-app.get('/health', (req, res) => res.json({ status: 'LafiyaAI backend running' }));
+app.get("/api/health", (req, res) =>
+  res.json({ success: true, message: "HealthCommunity API is running", timestamp: new Date() })
+);
 
-// 404
-app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
+// API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/communities", communityRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/doctors", doctorRoutes);
+app.use("/api/hospitals", hospitalRoutes);
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/health-records", healthRecordRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/medications", medicationRoutes);
+app.use("/api/pregnancy", pregnancyRoutes);
+app.use("/api/campaigns", campaignRoutes);
+app.use("/api/emergency", emergencyRoutes);
+app.use("/api/admin", adminRoutes);
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Internal server error' });
-});
+// Error Handlers
+app.use(notFound);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`LafiyaAI server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`));
 
-module.exports = app;
+module.exports = { app, server };

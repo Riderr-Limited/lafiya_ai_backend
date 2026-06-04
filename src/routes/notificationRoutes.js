@@ -14,16 +14,7 @@ router.patch('/read-all', protect, async (req, res) => {
   res.json({ message: 'All marked as read' });
 });
 
-router.patch('/:id/read', protect, async (req, res) => {
-  const n = await Notification.findOneAndUpdate(
-    { _id: req.params.id, user: req.user._id },
-    { read: true },
-    { new: true }
-  );
-  res.json({ notification: n });
-});
-
-// PATCH /api/notifications/fcm-token
+// PATCH /api/notifications/fcm-token — must be before /:id routes
 router.patch('/fcm-token', protect, async (req, res) => {
   try {
     await User.findByIdAndUpdate(req.user._id, { fcmToken: req.body.fcmToken });
@@ -31,6 +22,15 @@ router.patch('/fcm-token', protect, async (req, res) => {
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
+});
+
+router.patch('/:id/read', protect, async (req, res) => {
+  const n = await Notification.findOneAndUpdate(
+    { _id: req.params.id, user: req.user._id },
+    { read: true },
+    { new: true }
+  );
+  res.json({ notification: n });
 });
 
 module.exports = router;
