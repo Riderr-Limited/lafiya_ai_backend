@@ -9,6 +9,7 @@ const path = require("path");
 
 const connectDB = require("./config/database");
 const socketHandler = require("./config/socket");
+const { initFirebase } = require("./config/firebase");
 const errorHandler = require("./middlewares/errorHandler");
 const notFound = require("./middlewares/notFound");
 
@@ -37,6 +38,9 @@ const server = http.createServer(app);
 
 // Connect to DB
 connectDB();
+
+// Init Firebase Admin
+initFirebase();
 
 // Socket.io
 const io = new Server(server, {
