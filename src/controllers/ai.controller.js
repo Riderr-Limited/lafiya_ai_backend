@@ -1,17 +1,23 @@
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const AISession = require("../models/AISession.model");
 const Hospital = require("../models/Hospital.model");
 const Doctor = require("../models/Doctor.model");
 const AppError = require("../utils/AppError");
 const { v4: uuidv4 } = require("uuid");
 
-// Build system prompt based on user profile and context
+const getGemini = () => {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+};
+
+// Build system prompt
 const buildSystemPrompt = (user, language = "en") => {
   const langInstruction =
     language === "ha"
       ? "Respond primarily in Hausa (Harshen Hausa). Use simple, clear language."
       : "Respond in clear, simple English. Use easy-to-understand language for patients.";
 
-  return `You are a compassionate AI health assistant for HealthCommunity, a platform serving patients in Kano and Northern Nigeria.
+  return `You are a compassionate AI health assistant for Lafiya AI, a platform serving patients in Kano and Northern Nigeria.
 
 ${langInstruction}
 
@@ -26,15 +32,29 @@ Your responsibilities:
 
 IMPORTANT RULES:
 1. NEVER diagnose diseases definitively — always recommend seeing a doctor
-2. For emergencies (chest pain, difficulty breathing, stroke signs, severe bleeding, high fever in children), ALWAYS recommend going to the hospital immediately
-3. Be empathetic and patient with users
+2. For emergencies (chest pain, difficulty breathing, stroke signs, unconscious, severe bleeding, convulsion), ALWAYS say go to hospital immediately
+3. Be empathetic and patient
 4. Account for common conditions in Northern Nigeria: malaria, typhoid, hypertension, diabetes, sickle cell
 5. Respect cultural and religious sensitivities
-6. Always end responses with a recommendation to consult a qualified doctor
+6. Always end with a recommendation to consult a qualified doctor
 
 User profile: ${user.firstName}, ${user.gender || "unknown gender"}, conditions: ${user.healthConditions?.join(", ") || "none specified"}.
 
 You are NOT a replacement for medical professionals.`;
+};
+
+// Detect urgency from message
+const detectUrgency = (message) => {
+  const lower = message.toLowerCase();
+  const levels = {
+    emergency: ["chest pain", "cannot breathe", "stroke", "unconscious", "severe bleeding", "convulsion", "not breathing"],
+    high: ["high fever", "vomiting blood", "severe pain", "difficulty breathing", "fitting"],
+    moderate: ["fever", "persistent pain", "dizziness", "swelling", "headache"],
+  };
+  for (const [level, keywords] of Object.entries(levels)) {
+    if (keywords.some((kw) => lower.includes(kw))) return level;
+  }
+  return "low";
 };
 
 // POST /api/ai/chat
@@ -57,7 +77,7 @@ exports.chat = async (req, res, next) => {
       });
     }
 
-    // Add user message
+    // Add user message to session
     session.messages.push({
       role: "user",
       content: message,
@@ -65,52 +85,27 @@ exports.chat = async (req, res, next) => {
       inputType,
     });
 
-    // Build messages for OpenAI
-    const conversationMessages = session.messages.slice(-10).map((m) => ({
-      role: m.role,
-      content: m.content,
+    // Build Gemini chat history (last 10 messages)
+    const history = session.messages.slice(-11, -1).map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
     }));
 
-    // Call OpenAI
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: buildSystemPrompt(req.user, language) },
-          ...conversationMessages,
-        ],
-        max_tokens: 800,
-        temperature: 0.7,
-      }),
+    const model = getGemini();
+    const systemPrompt = buildSystemPrompt(req.user, language || req.user.preferredLanguage);
+
+    const chat = model.startChat({
+      history,
+      systemInstruction: { role: "system", parts: [{ text: systemPrompt }] },
+      generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
     });
 
-    if (!openaiResponse.ok) {
-      const err = await openaiResponse.json();
-      throw new Error(err.error?.message || "AI service error");
-    }
+    const result = await chat.sendMessage(message);
+    const aiReply = result.response.text();
 
-    const aiData = await openaiResponse.json();
-    const aiReply = aiData.choices[0].message.content;
+    const urgencyLevel = detectUrgency(message);
 
-    // Detect urgency
-    const urgencyKeywords = {
-      emergency: ["chest pain", "cannot breathe", "stroke", "unconscious", "severe bleeding", "convulsion"],
-      high: ["high fever", "vomiting blood", "severe pain", "difficulty breathing"],
-      moderate: ["fever", "persistent pain", "dizziness", "swelling"],
-    };
-
-    let urgencyLevel = "low";
-    const lowerMessage = message.toLowerCase();
-    if (urgencyKeywords.emergency.some((kw) => lowerMessage.includes(kw))) urgencyLevel = "emergency";
-    else if (urgencyKeywords.high.some((kw) => lowerMessage.includes(kw))) urgencyLevel = "high";
-    else if (urgencyKeywords.moderate.some((kw) => lowerMessage.includes(kw))) urgencyLevel = "moderate";
-
-    // Add assistant reply
+    // Add assistant reply to session
     session.messages.push({
       role: "assistant",
       content: aiReply,
@@ -118,13 +113,12 @@ exports.chat = async (req, res, next) => {
     });
     session.urgencyLevel = urgencyLevel;
 
-    // Auto-recommend nearby hospital for emergencies
+    // Auto-recommend emergency hospital if needed
     let recommendedHospital = null;
     if (urgencyLevel === "emergency") {
       recommendedHospital = await Hospital.findOne({
         isActive: true,
         emergencyAvailable: true,
-        state: { $regex: "kano", $options: "i" },
       }).select("name address phone emergencyPhone");
     }
 
@@ -137,6 +131,64 @@ exports.chat = async (req, res, next) => {
       urgencyLevel,
       recommendedHospital,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/ai/symptom-check
+exports.symptomCheck = async (req, res, next) => {
+  try {
+    const { symptoms, age, gender, language = "en" } = req.body;
+    if (!symptoms || !symptoms.length) return next(new AppError("Symptoms are required", 400));
+
+    const prompt = `A patient reports the following symptoms: ${symptoms.join(", ")}.
+Age: ${age || "unknown"}, Gender: ${gender || "unknown"}.
+
+Please provide:
+1. Possible conditions (list 2-3 most likely, but DO NOT diagnose definitively)
+2. Urgency level (low/moderate/high/emergency)
+3. Recommended type of specialist to see
+4. Immediate home care tips if safe to manage at home
+5. Warning signs that require immediate hospital visit
+
+${buildSystemPrompt({ firstName: "Patient", gender, healthConditions: [] }, language)}
+
+Respond in ${language === "ha" ? "Hausa" : "simple English"}.`;
+
+    const model = getGemini();
+    const result = await model.generateContent(prompt);
+    const analysis = result.response.text();
+
+    // Map symptoms to specializations
+    const symptomToSpecialty = {
+      chest: "cardiologist", heart: "cardiologist",
+      stomach: "gastroenterologist", abdomen: "gastroenterologist",
+      head: "neurologist", brain: "neurologist",
+      skin: "dermatologist", rash: "dermatologist",
+      mental: "psychiatrist", anxiety: "psychiatrist",
+      pregnancy: "obstetrician", pregnant: "obstetrician",
+      kidney: "nephrologist", urine: "nephrologist",
+      eye: "ophthalmologist", vision: "ophthalmologist",
+      bone: "orthopedist", joint: "orthopedist",
+    };
+
+    let specialization = "general practitioner";
+    for (const [keyword, spec] of Object.entries(symptomToSpecialty)) {
+      if (symptoms.some((s) => s.toLowerCase().includes(keyword))) {
+        specialization = spec;
+        break;
+      }
+    }
+
+    const suggestedDoctors = await Doctor.find({
+      specialization: { $regex: specialization, $options: "i" },
+      isVerified: true,
+    })
+      .populate("user", "firstName lastName avatar")
+      .limit(3);
+
+    res.status(200).json({ success: true, analysis, suggestedDoctors, specialization });
   } catch (error) {
     next(error);
   }
@@ -164,72 +216,6 @@ exports.getSession = async (req, res, next) => {
     });
     if (!session) return next(new AppError("Session not found", 404));
     res.status(200).json({ success: true, session });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// POST /api/ai/symptom-check
-exports.symptomCheck = async (req, res, next) => {
-  try {
-    const { symptoms, age, gender, language = "en" } = req.body;
-    if (!symptoms || !symptoms.length) return next(new AppError("Symptoms are required", 400));
-
-    const prompt = `A patient reports the following symptoms: ${symptoms.join(", ")}. 
-Age: ${age || "unknown"}, Gender: ${gender || "unknown"}.
-
-Please provide:
-1. Possible conditions (list 2-3 most likely, but DO NOT diagnose definitively)
-2. Urgency level (low/moderate/high/emergency)
-3. Recommended type of specialist to see
-4. Immediate home care tips if safe to manage at home
-5. Warning signs that require immediate hospital visit
-
-Respond in ${language === "ha" ? "Hausa" : "simple English"}.`;
-
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: buildSystemPrompt(req.user, language) },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: 1000,
-      }),
-    });
-
-    const aiData = await openaiResponse.json();
-    const analysis = aiData.choices[0].message.content;
-
-    // Find relevant doctors
-    const symptomToSpecialty = {
-      chest: "cardiologist", heart: "cardiologist",
-      stomach: "gastroenterologist", abdomen: "gastroenterologist",
-      head: "neurologist", brain: "neurologist",
-      skin: "dermatologist", rash: "dermatologist",
-      mental: "psychiatrist", anxiety: "psychiatrist",
-      pregnancy: "obstetrician", pregnant: "obstetrician",
-      kidney: "nephrologist", urine: "nephrologist",
-    };
-
-    let specialization = "general practitioner";
-    for (const [keyword, spec] of Object.entries(symptomToSpecialty)) {
-      if (symptoms.some((s) => s.toLowerCase().includes(keyword))) {
-        specialization = spec;
-        break;
-      }
-    }
-
-    const suggestedDoctors = await Doctor.find({ specialization: { $regex: specialization, $options: "i" }, isVerified: true })
-      .populate("user", "firstName lastName avatar")
-      .limit(3);
-
-    res.status(200).json({ success: true, analysis, suggestedDoctors, specialization });
   } catch (error) {
     next(error);
   }
