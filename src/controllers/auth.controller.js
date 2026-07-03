@@ -46,11 +46,12 @@ exports.register = async (req, res, next) => {
 // POST /api/auth/login
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, phone, password } = req.body;
+    const query = email ? { email } : { phone };
 
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne(query).select("+password");
     if (!user || !(await user.comparePassword(password))) {
-      return next(new AppError("Invalid email or password", 401));
+      return next(new AppError("Invalid email or phone or password", 401));
     }
 
     if (!user.isActive) return next(new AppError("Your account has been deactivated", 401));

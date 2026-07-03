@@ -13,8 +13,15 @@ const registerRules = [
 ];
 
 const loginRules = [
-  body("email").isEmail().withMessage("Valid email required"),
+  body("email").optional().isEmail().withMessage("Valid email required"),
+  body("phone").optional().notEmpty().withMessage("Phone number is required"),
   body("password").notEmpty().withMessage("Password is required"),
+  body().custom((value, { req }) => {
+    if (!req.body.email && !req.body.phone) {
+      throw new Error("Email or phone is required");
+    }
+    return true;
+  }),
 ];
 
 router.post("/register", ...registerRules, validate, authController.register);
