@@ -13,9 +13,12 @@ AI + Doctors + Community — A Hausa-first health network for Northern Nigeria.
 ```bash
 cp .env.example .env
 # Fill in MONGO_URI, JWT_SECRET, OPENAI_API_KEY
+# Also configure FCM and Cloudinary values if using push notifications or file uploads
 npm install
 npm run dev
 ```
+
+> Note: In production, make sure `MONGO_URI` is set in your host environment. The app will fail to start if this variable is missing.
 
 # HealthCommunity Backend API
 
