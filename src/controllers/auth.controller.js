@@ -39,7 +39,7 @@ exports.register = async (req, res, next) => {
 
     sendTokenResponse(user, 201, res, "Registration successful. Please verify your email.");
   } catch (error) {
-   
+    next(error);
   }
 };
 
@@ -60,7 +60,7 @@ exports.login = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res, "Login successful");
   } catch (error) {
-   
+    next(error);
   }
 };
 
@@ -87,7 +87,7 @@ exports.verifyEmail = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res, "Email verified successfully");
   } catch (error) {
-   
+    next(error);
   }
 };
 
