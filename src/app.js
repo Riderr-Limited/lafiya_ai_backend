@@ -61,7 +61,7 @@ app.set("io", io);
 // Security Middlewares
 app.use(helmet());
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.options("/*", cors(corsOptions));
 
 // Rate Limiting
 const limiter = rateLimit({
