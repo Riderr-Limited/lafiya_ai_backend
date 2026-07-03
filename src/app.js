@@ -40,15 +40,16 @@ const server = http.createServer(app);
 connectDB();
 
 // Socket.io
+const allowedOrigins = [process.env.CLIENT_URL, "https://lafiya-ai-alpha.vercel.app"].filter(Boolean);
 const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_URL || "*", methods: ["GET", "POST"] },
+  cors: { origin: allowedOrigins.length ? allowedOrigins : "*", methods: ["GET", "POST"] },
 });
 socketHandler(io);
 app.set("io", io);
 
 // Security Middlewares
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || "*", credentials: true }));
+app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : "*", credentials: true }));
 
 // Rate Limiting
 const limiter = rateLimit({
