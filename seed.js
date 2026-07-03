@@ -1,9 +1,9 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('./src/models/User');
-const Hospital = require('./src/models/Hospital');
-const { CommunityGroup } = require('./src/models/Community');
+const User = require('./src/models/User.model');
+const Hospital = require('./src/models/Hospital.model');
+const Community = require('./src/models/Community.model');
 const Content = require('./src/models/Content');
 
 const seed = async () => {
@@ -14,7 +14,7 @@ const seed = async () => {
   await Promise.all([
     User.deleteMany({}),
     Hospital.deleteMany({}),
-    CommunityGroup.deleteMany({}),
+    Community.deleteMany({}),
     Content.deleteMany({}),
   ]);
   console.log('Cleared existing data');
@@ -24,33 +24,33 @@ const seed = async () => {
   // --- Users ---
   const [patient, doctor, admin] = await User.insertMany([
     {
-      name: 'Aminu Musa',
+      firstName: 'Aminu',
+      lastName: 'Musa',
+      email: 'aminu.musa@example.com',
       phone: '08012345678',
       password: await hash('password123'),
       role: 'patient',
-      language: 'hausa',
+      preferredLanguage: 'ha',
       location: { state: 'Kano', lga: 'Nassarawa' },
     },
     {
-      name: 'Dr. Fatima Bello',
+      firstName: 'Fatima',
+      lastName: 'Bello',
+      email: 'dr.fatima.bello@example.com',
       phone: '08077777777',
       password: await hash('doctor123'),
       role: 'doctor',
-      language: 'english',
+      preferredLanguage: 'en',
       location: { state: 'Kano', lga: 'Fagge' },
-      doctorProfile: {
-        specialization: 'general',
-        licenseNumber: 'MDCN-12345',
-        isVerified: true,
-        trustScore: 85,
-      },
     },
     {
-      name: 'Admin User',
+      firstName: 'Admin',
+      lastName: 'User',
+      email: 'admin@example.com',
       phone: '08099999999',
       password: await hash('admin123'),
       role: 'admin',
-      language: 'english',
+      preferredLanguage: 'en',
     },
   ]);
 
@@ -95,11 +95,11 @@ const seed = async () => {
   ]);
 
   // --- Community Groups ---
-  await CommunityGroup.insertMany([
+  await Community.insertMany([
     {
       name: 'Maternal Health Kano',
-      nameHausa: 'Lafiyar Mata Kano',
-      category: 'maternal_health',
+      slug: 'maternal-health-kano',
+      category: 'pregnancy_maternal',
       description: 'Support group for maternal health in Kano',
       moderators: [admin._id],
       members: [patient._id, doctor._id],
@@ -107,6 +107,7 @@ const seed = async () => {
     },
     {
       name: 'Diabetes Support',
+      slug: 'diabetes-support',
       category: 'diabetes',
       description: 'Community for diabetes patients and caregivers',
       moderators: [admin._id],
@@ -115,7 +116,8 @@ const seed = async () => {
     },
     {
       name: 'General Health',
-      category: 'general',
+      slug: 'general-health',
+      category: 'general_health',
       description: 'General health discussions',
       moderators: [admin._id],
       members: [],
