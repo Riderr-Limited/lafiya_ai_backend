@@ -61,7 +61,8 @@ app.set("io", io);
 // Security Middlewares
 app.use(helmet());
 app.use(cors(corsOptions));
-app.options("/*", cors(corsOptions));
+// Removed app.options wildcard to avoid path-to-regexp errors on newer express versions.
+// Global CORS middleware above already handles preflight requests for defined routes.
 
 // Rate Limiting
 const limiter = rateLimit({
