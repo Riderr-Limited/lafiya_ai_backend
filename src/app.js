@@ -7,11 +7,11 @@ const rateLimit = require("express-rate-limit");
 const { Server } = require("socket.io");
 const path = require("path");
 
-const connectDB = require("./config/database");
+const connectDB = require("./config/db");
 const socketHandler = require("./config/socket");
-const { initFirebase } = require("./config/firebase");
-const errorHandler = require("./middlewares/errorHandler");
-const notFound = require("./middlewares/notFound");
+require("./config/firebase");
+const errorHandler = require("./middleware/errorHandler");
+const notFound = require("./middleware/notFound");
 
 // Route imports
 const authRoutes = require("./routes/auth.routes");
@@ -22,7 +22,7 @@ const commentRoutes = require("./routes/comment.routes");
 const doctorRoutes = require("./routes/doctor.routes");
 const hospitalRoutes = require("./routes/hospital.routes");
 const appointmentRoutes = require("./routes/appointment.routes");
-const healthRecordRoutes = require("./routes/healthRecord.routes");
+const healthRecordRoutes = require("./routes/healthrecord.routes");
 const aiRoutes = require("./routes/ai.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const medicationRoutes = require("./routes/medication.routes");
@@ -38,9 +38,6 @@ const server = http.createServer(app);
 
 // Connect to DB
 connectDB();
-
-// Init Firebase Admin
-initFirebase();
 
 // Socket.io
 const io = new Server(server, {
