@@ -78,7 +78,7 @@ exports.getMe = async (req, res) => {
 };
 
 // POST /api/auth/verify-email
-exports.verifyEmail = async (req, res, next) => {
+exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.body;
     const hashed = hashToken(token);
@@ -95,12 +95,12 @@ exports.verifyEmail = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res, "Email verified successfully");
   } catch (error) {
-    console.error(error);
+    return sendErrorResponse(res, error);
   }
 };
 
 // POST /api/auth/forgot-password
-exports.forgotPassword = async (req, res, next) => {
+exports.forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
     if (!user) return sendErrorResponse(res, new AppError("No account with that email", 404));
@@ -114,12 +114,12 @@ exports.forgotPassword = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Password reset email sent" });
   } catch (error) {
-    console.error(error);
+    return sendErrorResponse(res, error);
   }
 };
 
 // POST /api/auth/reset-password
-exports.resetPassword = async (req, res, next) => {
+exports.resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
     const hashed = hashToken(token);
@@ -136,12 +136,12 @@ exports.resetPassword = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res, "Password reset successful");
   } catch (error) {
-    next(error);
+    return sendErrorResponse(res, error);
   }
 };
 
 // PUT /api/auth/change-password
-exports.changePassword = async (req, res, next) => {
+exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const user = await User.findById(req.user._id).select("+password");
@@ -155,12 +155,12 @@ exports.changePassword = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res, "Password changed successfully");
   } catch (error) {
-    next(error);
+    return sendErrorResponse(res, error);
   }
 };
 
 // POST /api/auth/refresh-token
-exports.refreshToken = async (req, res, next) => {
+exports.refreshToken = async (req, res) => {
   try {
     const jwt = require("jsonwebtoken");
     const { refreshToken } = req.body;
@@ -168,21 +168,21 @@ exports.refreshToken = async (req, res, next) => {
 
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user) return next(new AppError("User not found", 401));
+    if (!user) return sendErrorResponse(res, new AppError("User not found", 401));
 
     const newToken = generateToken(user._id);
     res.status(200).json({ success: true, token: newToken });
   } catch (error) {
-    next(new AppError("Invalid refresh token", 401));
+    return sendErrorResponse(res, new AppError("Invalid refresh token", 401));
   }
 };
 
 // PUT /api/auth/update-fcm-token
-exports.updateFcmToken = async (req, res, next) => {
+exports.updateFcmToken = async (req, res) => {
   try {
     await User.findByIdAndUpdate(req.user._id, { fcmToken: req.body.fcmToken });
     res.status(200).json({ success: true, message: "FCM token updated" });
   } catch (error) {
-    next(error);
+    return sendErrorResponse(res, error);
   }
 };

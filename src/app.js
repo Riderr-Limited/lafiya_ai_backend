@@ -41,15 +41,27 @@ connectDB();
 
 // Socket.io
 const allowedOrigins = [process.env.CLIENT_URL, "https://lafiya-ai-alpha.vercel.app"].filter(Boolean);
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
 const io = new Server(server, {
-  cors: { origin: allowedOrigins.length ? allowedOrigins : "*", methods: ["GET", "POST"] },
+  cors: { origin: allowedOrigins.length ? allowedOrigins : "*", methods: ["GET", "POST", "OPTIONS"] },
 });
 socketHandler(io);
 app.set("io", io);
 
 // Security Middlewares
 app.use(helmet());
-app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : "*", credentials: true }));
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // Rate Limiting
 const limiter = rateLimit({
