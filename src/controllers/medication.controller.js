@@ -1,4 +1,4 @@
-const Medication = require("../models/Medication.model");
+const Medication = require("../models/medication.model");
 const AppError = require("../utils/AppError");
 const { createNotification } = require("../utils/notification.utils");
 

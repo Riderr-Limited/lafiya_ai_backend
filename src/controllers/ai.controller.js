@@ -1,5 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const AISession = require("../models/AISession.model");
+const AISession = require("../models/Aisession.model");
 const Hospital = require("../models/Hospital.model");
 const Doctor = require("../models/Doctor.model");
 const AppError = require("../utils/AppError");

@@ -1,4 +1,4 @@
-const HealthRecord = require("../models/HealthRecord.model");
+const HealthRecord = require("../models/healthRecord.model");
 const Doctor = require("../models/Doctor.model");
 const AppError = require("../utils/AppError");
 const { paginate, getPaginationMeta } = require("../utils/pagination.utils");
