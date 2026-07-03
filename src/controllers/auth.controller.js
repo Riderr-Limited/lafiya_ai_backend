@@ -10,13 +10,20 @@ const sendTokenResponse = (user, statusCode, res, message = "Success") => {
   res.status(statusCode).json({ success: true, message, token, refreshToken, user });
 };
 
+const sendErrorResponse = (res, error) => {
+  const statusCode = error.statusCode || 500;
+  const response = { success: false, message: error.message || "Server error" };
+  if (error.errors) response.errors = error.errors;
+  return res.status(statusCode).json(response);
+};
+
 // POST /api/auth/register
-exports.register = async (req, res, next) => {
+exports.register = async (req, res) => {
   try {
     const { firstName, lastName, email, password, phone, role, preferredLanguage } = req.body;
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return next(new AppError("Email already registered", 400));
+    if (existingUser) return sendErrorResponse(res, new AppError("Email already registered", 400));
 
     const verificationToken = generateRandomToken();
     const hashedToken = hashToken(verificationToken);
@@ -39,29 +46,29 @@ exports.register = async (req, res, next) => {
 
     sendTokenResponse(user, 201, res, "Registration successful. Please verify your email.");
   } catch (error) {
-    next(error);
+    return sendErrorResponse(res, error);
   }
 };
 
 // POST /api/auth/login
-exports.login = async (req, res, next) => {
+exports.login = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
     const query = email ? { email } : { phone };
 
     const user = await User.findOne(query).select("+password");
     if (!user || !(await user.comparePassword(password))) {
-      return next(new AppError("Invalid email or phone or password", 401));
+      return sendErrorResponse(res, new AppError("Invalid email or phone or password", 401));
     }
 
-    if (!user.isActive) return next(new AppError("Your account has been deactivated", 401));
+    if (!user.isActive) return sendErrorResponse(res, new AppError("Your account has been deactivated", 401));
 
     user.lastSeen = Date.now();
     await user.save({ validateBeforeSave: false });
 
     sendTokenResponse(user, 200, res, "Login successful");
   } catch (error) {
-    next(error);
+    return sendErrorResponse(res, error);
   }
 };
 
@@ -79,7 +86,7 @@ exports.verifyEmail = async (req, res, next) => {
       emailVerificationToken: hashed,
       emailVerificationExpiry: { $gt: Date.now() },
     });
-    if (!user) return next(new AppError("Invalid or expired verification token", 400));
+    if (!user) return sendErrorResponse(res, new AppError("Invalid or expired verification token", 400));
 
     user.isVerified = true;
     user.emailVerificationToken = undefined;
@@ -96,7 +103,7 @@ exports.verifyEmail = async (req, res, next) => {
 exports.forgotPassword = async (req, res, next) => {
   try {
     const user = await User.findOne({ email: req.body.email });
-    if (!user) return next(new AppError("No account with that email", 404));
+    if (!user) return sendErrorResponse(res, new AppError("No account with that email", 404));
 
     const resetToken = generateRandomToken();
     user.passwordResetToken = hashToken(resetToken);
@@ -120,7 +127,7 @@ exports.resetPassword = async (req, res, next) => {
       passwordResetToken: hashed,
       passwordResetExpiry: { $gt: Date.now() },
     });
-    if (!user) return next(new AppError("Invalid or expired reset token", 400));
+    if (!user) return sendErrorResponse(res, new AppError("Invalid or expired reset token", 400));
 
     user.password = password;
     user.passwordResetToken = undefined;
@@ -140,7 +147,7 @@ exports.changePassword = async (req, res, next) => {
     const user = await User.findById(req.user._id).select("+password");
 
     if (!(await user.comparePassword(currentPassword))) {
-      return next(new AppError("Current password is incorrect", 401));
+      return sendErrorResponse(res, new AppError("Current password is incorrect", 401));
     }
 
     user.password = newPassword;
@@ -157,7 +164,7 @@ exports.refreshToken = async (req, res, next) => {
   try {
     const jwt = require("jsonwebtoken");
     const { refreshToken } = req.body;
-    if (!refreshToken) return next(new AppError("No refresh token", 401));
+    if (!refreshToken) return sendErrorResponse(res, new AppError("No refresh token", 401));
 
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
