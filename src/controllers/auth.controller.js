@@ -95,7 +95,7 @@ exports.verifyEmail = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res, "Email verified successfully");
   } catch (error) {
-    next(error);
+    console.error(error);
   }
 };
 
@@ -114,7 +114,7 @@ exports.forgotPassword = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Password reset email sent" });
   } catch (error) {
-    next(error);
+    console.error(error);
   }
 };
 

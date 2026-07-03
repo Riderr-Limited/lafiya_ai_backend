@@ -16,7 +16,7 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "User no longer exists or is deactivated." });
     }
     req.user = user;
-    next();
+   
   } catch (error) {
     return res.status(401).json({ success: false, message: "Invalid or expired token." });
   }
@@ -30,7 +30,7 @@ exports.restrictTo = (...roles) => {
         message: "You do not have permission to perform this action.",
       });
     }
-    next();
+   
   };
 };
 
@@ -42,5 +42,5 @@ exports.optionalAuth = async (req, res, next) => {
       req.user = await User.findById(decoded.id);
     }
   } catch {}
-  next();
+ 
 };

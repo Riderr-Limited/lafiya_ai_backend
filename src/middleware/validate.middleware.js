@@ -9,7 +9,7 @@ const validate = (req, res, next) => {
       errors: errors.array().map((e) => ({ field: e.path, message: e.msg })),
     });
   }
-  next();
+
 };
 
 module.exports = validate;
