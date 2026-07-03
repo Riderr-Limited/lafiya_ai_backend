@@ -33,11 +33,9 @@ exports.register = async (req, res, next) => {
       emailVerificationExpiry: Date.now() + 24 * 60 * 60 * 1000, // 24h
     });
 
-    try {
-      await sendVerificationEmail(user, verificationToken);
-    } catch (e) {
-      console.error("Email send failed:", e.message);
-    }
+    sendVerificationEmail(user, verificationToken).catch((e) =>
+      console.error("Email send failed:", e.message)
+    );
 
     sendTokenResponse(user, 201, res, "Registration successful. Please verify your email.");
   } catch (error) {
