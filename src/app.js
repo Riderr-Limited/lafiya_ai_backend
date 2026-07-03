@@ -34,6 +34,8 @@ const adminRoutes = require("./routes/admin.routes");
 require("dotenv").config();
 
 const app = express();
+// Trust the first proxy (Render, Heroku, etc.) so express-rate-limit can read X-Forwarded-For
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 // Connect to DB
